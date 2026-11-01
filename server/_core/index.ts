@@ -7,6 +7,8 @@ import { publicPlatformScript } from "./publicConfig";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { registerApplicationRoutes } from "../app-routes";
+import { seedDemoData } from "../seed-demo";
 
 async function startServer() {
   const app = express();
@@ -19,6 +21,13 @@ async function startServer() {
     res.set("Cache-Control", "no-store").type("application/javascript").send(publicPlatformScript());
   });
   registerOAuthRoutes(app);
+  registerApplicationRoutes(app);
+  try {
+    await seedDemoData();
+    console.log("[Demo] Persistent demo accounts and fictional data are ready");
+  } catch (error) {
+    console.warn("[Demo] Seed skipped:", error instanceof Error ? error.message : "unknown error");
+  }
   // tRPC API
   app.use(
     "/api/trpc",
