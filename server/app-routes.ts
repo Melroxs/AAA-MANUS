@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
-import { documentRecords } from "../drizzle/schema";
+import { appAccounts, documentRecords } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { authenticateAppRequest, clearAppSessionCookie, DEMO_ACCOUNTS, loginWithPassword, setAppSessionCookie, toPublicAccount } from "./app-auth";
@@ -68,6 +68,25 @@ export function registerApplicationRoutes(app: Express) {
     try {
       const account = await authenticateAppRequest(req);
       res.json({ account: account ? toPublicAccount(account) : null });
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.patch("/api/account", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    const input = z.object({ name: z.string().min(2).max(160).optional(), phone: z.string().max(32).nullable().optional() }).safeParse(req.body);
+    if (!input.success || (!input.data.name && input.data.phone === undefined)) {
+      res.status(400).json({ error: "Provide a valid name or phone number." });
+      return;
+    }
+    try {
+      const db = await getDb();
+      if (!db) throw new Error("DATABASE_NOT_AVAILABLE");
+      await db.update(appAccounts).set({ ...(input.data.name ? { name: input.data.name } : {}), ...(input.data.phone !== undefined ? { phone: input.data.phone } : {}) }).where(eq(appAccounts.id, account.id));
+      const updated = await (await import("./app-auth")).getAccountById(account.id);
+      res.json({ account: updated ? toPublicAccount(updated) : null });
     } catch (error) {
       sendError(res, error);
     }
