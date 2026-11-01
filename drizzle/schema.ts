@@ -100,6 +100,15 @@ export const bookings = mysqlTable("bookings", {
   scheduledDate: varchar("scheduledDate", { length: 32 }).notNull(),
   scheduledTime: varchar("scheduledTime", { length: 32 }).notNull(),
   rideType: varchar("rideType", { length: 80 }).notNull(),
+  serviceType: varchar("serviceType", { length: 40 }).default("ambulatory").notNull(),
+  tripDirection: varchar("tripDirection", { length: 20 }).default("one_way").notNull(),
+  accessibilityNeeds: varchar("accessibilityNeeds", { length: 255 }),
+  wheelchairRequired: varchar("wheelchairRequired", { length: 8 }).default("false").notNull(),
+  stretcherRequired: varchar("stretcherRequired", { length: 8 }).default("false").notNull(),
+  additionalAttendants: int("additionalAttendants").default(0).notNull(),
+ assistanceInstructions: text("assistanceInstructions"),
+  estimatedFareCents: int("estimatedFareCents"),
+  fareStatus: varchar("fareStatus", { length: 40 }).default("indicative").notNull(),
   status: mysqlEnum("status", ["requested", "assigned", "driver_en_route", "driver_arrived", "passenger_picked_up", "in_progress", "completed", "cancelled", "exception"]).default("requested").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -146,6 +155,14 @@ export const appNotifications = mysqlTable("app_notifications", {
   body: varchar("body", { length: 500 }).notNull(),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const appSettings = mysqlTable("app_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  settingKey: varchar("settingKey", { length: 120 }).notNull().unique(),
+  settingValue: text("settingValue").notNull(),
+  updatedByAccountId: int("updatedByAccountId"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

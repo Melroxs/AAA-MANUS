@@ -9,10 +9,11 @@ import { createR2DownloadUrl, createR2UploadUrl, isR2Configured } from "./r2";
 import { seedDemoData } from "./seed-demo";
 import { completeDocumentUpload, getDriverOnboarding, isKycProviderConfigured, listVerificationQueue, reviewDriverVerification, submitDriverVerification } from "./kyc";
 import { listNotifications, markNotificationRead } from "./notifications";
+import { estimateFare, getRates, saveRates, scheduleForDate } from "./pricing";
 
 function sendError(res: Response, error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-  const status = code === "FORBIDDEN" || code === "PASSENGER_FORBIDDEN" ? 403 : code === "NOT_FOUND" ? 404 : code === "DATABASE_NOT_AVAILABLE" || code === "R2_NOT_CONFIGURED" ? 503 : code === "INVALID_TRANSITION" || code === "DRIVER_CONFLICT" || code === "DRIVER_NOT_APPROVED" || code === "VEHICLE_CONFLICT" || code === "VEHICLE_NOT_ELIGIBLE" ? 409 : 400;
+  const status = code === "FORBIDDEN" || code === "PASSENGER_FORBIDDEN" ? 403 : code === "NOT_FOUND" ? 404 : code === "DATABASE_NOT_AVAILABLE" || code === "R2_NOT_CONFIGURED" ? 503 : code === "INVALID_TRANSITION" || code === "DRIVER_CONFLICT" || code === "DRIVER_NOT_APPROVED" || code === "VEHICLE_CONFLICT" || code === "VEHICLE_NOT_ELIGIBLE" || code === "VEHICLE_NOT_SUITABLE" || code === "STRETCHER_VEHICLE_CONFIRMATION_REQUIRED" ? 409 : 400;
   const safeMessage: Record<string, string> = {
     FORBIDDEN: "You do not have permission to perform this action.",
     PASSENGER_FORBIDDEN: "You do not have permission to manage this passenger.",
@@ -24,6 +25,8 @@ function sendError(res: Response, error: unknown) {
     DRIVER_NOT_APPROVED: "Only approved drivers can be assigned.",
     VEHICLE_CONFLICT: "The selected vehicle has a conflicting assignment.",
     VEHICLE_NOT_ELIGIBLE: "The selected vehicle is not active and associated with that driver.",
+    VEHICLE_NOT_SUITABLE: "The selected vehicle is not marked ready for wheelchair transport.",
+    STRETCHER_VEHICLE_CONFIRMATION_REQUIRED: "Stretcher trips require administrator confirmation of an appropriate vehicle and staffing plan.",
     TRIP_NOT_ELIGIBLE: "This trip is not eligible for location sharing.",
     INVALID_COORDINATES: "The supplied coordinates are invalid.",
   };
@@ -132,7 +135,7 @@ export function registerApplicationRoutes(app: Express) {
   app.post("/api/bookings", async (req, res) => {
     const account = await requireAccount(req, res);
     if (!account) return;
-    const input = z.object({ passenger: z.string().min(1).max(160), pickup: z.string().max(255), destination: z.string().max(255), date: z.string().max(32), time: z.string().max(32), type: z.string().max(80) }).safeParse(req.body);
+    const input = z.object({ passenger: z.string().min(1).max(160), pickup: z.string().max(255), destination: z.string().max(255), date: z.string().max(32), time: z.string().max(32), type: z.string().max(80), serviceType: z.enum(["ambulatory", "wheelchair", "stretcher"]), tripDirection: z.enum(["one_way", "round_trip"]), accessibilityNeeds: z.string().max(255).optional(), wheelchairRequired: z.boolean().optional(), stretcherRequired: z.boolean().optional(), additionalAttendants: z.number().int().min(0).max(4).optional(), assistanceInstructions: z.string().max(1000).optional() }).safeParse(req.body);
     if (!input.success) {
       res.status(400).json({ error: "Booking details are incomplete." });
       return;
@@ -142,6 +145,23 @@ export function registerApplicationRoutes(app: Express) {
     } catch (error) {
       sendError(res, error);
     }
+  });
+
+  app.get("/api/pricing", async (_req, res) => {
+    res.json({ rates: await getRates(), indicative: true, additionalCharges: { mileage: "$5/mile; $10/mile on holidays", waiting: "$1/minute; holiday rate requires confirmation", attendant: "$10 per 15 minutes" } });
+  });
+
+  app.post("/api/pricing/estimate", async (req, res) => {
+    const input = z.object({ serviceType: z.enum(["ambulatory", "wheelchair", "stretcher"]), tripDirection: z.enum(["one_way", "round_trip"]), date: z.string(), time: z.string(), additionalAttendants: z.number().int().min(0).max(4).optional() }).safeParse(req.body);
+    if (!input.success) { res.status(400).json({ error: "Valid service, direction, date and time are required." }); return; }
+    const rates = await getRates();
+    res.json({ estimatedFareCents: estimateFare({ serviceType: input.data.serviceType, tripDirection: input.data.tripDirection, schedule: scheduleForDate(input.data.date, input.data.time), additionalAttendants: input.data.additionalAttendants }, rates), fareStatus: "indicative", schedule: scheduleForDate(input.data.date, input.data.time) });
+  });
+
+  app.put("/api/admin/pricing", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try { res.json(await saveRates(account, req.body?.rates)); } catch (error) { sendError(res, error); }
   });
 
   app.post("/api/bookings/:publicId/assign", async (req, res) => {

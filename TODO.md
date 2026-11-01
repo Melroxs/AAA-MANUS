@@ -3,6 +3,9 @@
 ## Public entry and brand foundation
 
 - [x] `/` is a responsive public landing page for AAA Home Rides Corporation with a clear non-emergency transportation message, Alexandria, Virginia context, rider support call-to-action, accessible navigation, and the persistent notice: “AAA Home Rides is a non-emergency transportation service. For medical emergencies, call 911 in the United States.”
+- [x] The public site now explains AAA Home Ride Corporation's mission, professional/compassionate/reliable/accessibility positioning, ambulatory, wheelchair, stretcher and flight-escort services, door-to-door coordination, safety boundaries, and contact instructions.
+- [x] `/pricing` publishes the supplied wheelchair, ambulatory and stretcher schedule as clearly labeled indicative estimates, with additional mileage, waiting-time and attendant notes; it does not promise insurance coverage or automatic charges.
+- [ ] Supplied address `7906 Andrus Road, Suite 7`, telephone `571-217-8394`, fax, `support@salvationacademy.org`, and `www.aaahomride.com` remain flagged for administrator confirmation because they conflict with the current verified support contact; they are not silently published as verified facts.
 
 ## Demonstration access
 
@@ -15,6 +18,8 @@
 - [x] Rider and caregiver consoles show the next ride, pickup and destination, status progression, upcoming/history context, assigned driver information, and location availability/stale indicators.
 - [x] The rider trip view includes a prominent Call Driver action using the assigned driver’s authorized `tel:` contact and a fallback when a number is not available.
 - [x] A rider/caregiver can open a booking form, enter passenger, pickup, destination, date, time and ride type, and persist the new booking through the authenticated backend in Requested state.
+- [x] Booking requests persist transportation service, one-way/round-trip direction, accessibility needs, wheelchair/stretcher requirements, additional attendants, assistance instructions, and an indicative fare status/estimate.
+- [x] `/api/pricing` and `/api/pricing/estimate` expose the approved-rule path; administrators can update rate JSON through the protected dashboard editor and `/api/admin/pricing` without code changes.
 - [x] Authenticated `/overview`, `/bookings`, `/drivers`, `/operations`, and `/account` pages now render through real role-aware navigation; booking management includes filters and authorized cancellation that releases assignments.
 - [x] Caregiver and clinic-intake access uses explicit caregiver-to-passenger authorization records rather than a passenger-name shortcut; the verified smoke test showed James Lopez sees only authorized Maria Lopez bookings.
 
@@ -33,6 +38,7 @@
 - [x] Administrator console shows user/role counts, driver review queue, document/vehicle review context, booking/trip oversight, demo-account readiness and audit-log context.
 - [x] Dispatcher event history reads are persisted and interactive; alert review filters exception records, and administrator controls surface their protected-API/provider prerequisites rather than silently doing nothing.
 - [x] Dispatcher assignment selects an approved driver and active associated vehicle; server-side driver and vehicle overlap checks reject a simultaneous same-slot assignment with HTTP 409.
+- [x] Assignment rejects vehicles not marked mobility-ready for wheelchair bookings and requires explicit administrator confirmation before stretcher assignment; dispatch sees the persisted service requirements in booking data.
 - [x] Cancellation is persisted as an auditable event, notifies participants, clears driver/vehicle assignment, and is permitted only to the booking owner or authorized operations roles.
 
 ## Platform and quality

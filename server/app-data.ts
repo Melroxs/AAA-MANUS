@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { appAccounts, bookingEvents, bookings, caregiverAuthorizations, driverLocations, driverProfiles, passengers, vehicles, type AppAccount } from "../drizzle/schema";
 import { getDb } from "./db";
 import { notifyBookingAssignment, notifyBookingParticipants } from "./notifications";
+import { estimateFare, getRates, scheduleForDate, type ServiceType, type TripDirection } from "./pricing";
 
 const BOOKING_STATUS_LABELS: Record<string, string> = {
   requested: "Requested",
@@ -120,6 +121,15 @@ export async function listBookingsForAccount(account: AppAccount) {
     date: dateLabel(booking.scheduledDate),
     time: booking.scheduledTime,
     type: booking.rideType,
+    serviceType: booking.serviceType,
+    tripDirection: booking.tripDirection,
+    accessibilityNeeds: booking.accessibilityNeeds,
+    wheelchairRequired: booking.wheelchairRequired === "true",
+    stretcherRequired: booking.stretcherRequired === "true",
+    additionalAttendants: booking.additionalAttendants,
+    assistanceInstructions: booking.assistanceInstructions,
+    estimatedFareCents: booking.estimatedFareCents,
+    fareStatus: booking.fareStatus,
     status: toUiStatus(booking.status),
     driver: booking.assignedDriverAccountId ? (await driverSummary(booking.assignedDriverAccountId))?.name : undefined,
     driverDetails: await driverSummary(booking.assignedDriverAccountId),
@@ -129,7 +139,7 @@ export async function listBookingsForAccount(account: AppAccount) {
   })));
 }
 
-export async function createBooking(account: AppAccount, input: { passenger: string; pickup: string; destination: string; date: string; time: string; type: string }) {
+export async function createBooking(account: AppAccount, input: { passenger: string; pickup: string; destination: string; date: string; time: string; type: string; serviceType: ServiceType; tripDirection: TripDirection; accessibilityNeeds?: string; wheelchairRequired?: boolean; stretcherRequired?: boolean; additionalAttendants?: number; assistanceInstructions?: string }) {
   if (!canCreate(account)) throw new Error("FORBIDDEN");
   const db = await getDb();
   if (!db) throw new Error("DATABASE_NOT_AVAILABLE");
@@ -137,6 +147,8 @@ export async function createBooking(account: AppAccount, input: { passenger: str
   const passenger = passengerRows[0];
   if (!passenger || !(await accountCanAccessPassenger(account, passenger))) throw new Error("PASSENGER_FORBIDDEN");
   const publicId = `AR-${1000 + Math.floor(Math.random() * 8999)}`;
+  const rates = await getRates();
+  const estimatedFareCents = estimateFare({ serviceType: input.serviceType, tripDirection: input.tripDirection, schedule: scheduleForDate(input.date, input.time), additionalAttendants: input.additionalAttendants }, rates);
   await db.insert(bookings).values({
     publicId,
     passengerId: passenger.id,
@@ -146,6 +158,15 @@ export async function createBooking(account: AppAccount, input: { passenger: str
     scheduledDate: input.date || "Requested",
     scheduledTime: input.time || "Time to be confirmed",
     rideType: input.type || "Non-emergency care",
+    serviceType: input.serviceType || "ambulatory",
+    tripDirection: input.tripDirection || "one_way",
+    accessibilityNeeds: input.accessibilityNeeds || null,
+    wheelchairRequired: input.wheelchairRequired ? "true" : "false",
+    stretcherRequired: input.stretcherRequired ? "true" : "false",
+    additionalAttendants: input.additionalAttendants ?? 0,
+    assistanceInstructions: input.assistanceInstructions || null,
+    estimatedFareCents,
+    fareStatus: "indicative",
     status: "requested",
   });
   const created = await db.select().from(bookings).where(eq(bookings.publicId, publicId)).limit(1);
@@ -183,6 +204,8 @@ export async function assignBooking(account: AppAccount, publicId: string, drive
     const vehicleRows = await db.select().from(vehicles).where(eq(vehicles.id, vehicleId)).limit(1);
     vehicle = vehicleRows[0];
     if (!vehicle || vehicle.ownerAccountId !== driverAccountId || vehicle.status !== "active") throw new Error("VEHICLE_NOT_ELIGIBLE");
+    if (row.booking.wheelchairRequired === "true" && vehicle.mobilityReady !== "true") throw new Error("VEHICLE_NOT_SUITABLE");
+    if (row.booking.stretcherRequired === "true") throw new Error("STRETCHER_VEHICLE_CONFIRMATION_REQUIRED");
     const vehicleAssignments = await db.select().from(bookings).where(and(eq(bookings.assignedVehicleId, vehicleId), inArray(bookings.status, ["assigned", "driver_en_route", "driver_arrived", "passenger_picked_up", "in_progress"])));
     if (vehicleAssignments.some(item => item.scheduledDate === row.booking.scheduledDate && item.scheduledTime === row.booking.scheduledTime && item.publicId !== publicId)) throw new Error("VEHICLE_CONFLICT");
   }

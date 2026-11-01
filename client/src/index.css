@@ -413,3 +413,31 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 
 .brand-mark { display: block; height: 42px; object-fit: contain; width: 52px; }.brand-compact .brand-mark { background: #fff; border-radius: 8px; height: 36px; width: 46px; }.brand-mark-light { filter: saturate(.9) contrast(1.05); }
 @media (max-width: 680px) { .brand-mark { height: 35px; width: 44px; }.brand-compact .brand-mark { height: 31px; width: 40px; } }
+/* Company information, service and pricing extensions */
+.safety-band { align-items: start; background: var(--ink); color: white; display: grid; gap: 60px; grid-template-columns: 1fr 1fr; margin-bottom: 110px; padding: 52px; }
+.safety-band h2 { font-size: 37px; letter-spacing: -.05em; line-height: 1.05; margin: 16px 0 0; max-width: 390px; }
+.safety-band p { color: rgba(255,255,255,.75); font-size: 13px; line-height: 1.7; margin: 0 0 16px; max-width: 470px; }
+.safety-band .small-note { color: var(--coral); font-weight: 800; }
+.contact-actions { display: grid; gap: 10px; }
+.contact-actions small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.pricing-page { padding: 72px 0 120px; }
+.pricing-page h1 { font-size: clamp(42px, 6vw, 70px); letter-spacing: -.07em; margin: 18px 0 14px; }
+.pricing-lede { color: var(--ink-soft); font-size: 15px; line-height: 1.7; max-width: 720px; }
+.pricing-table-wrap { margin-top: 42px; overflow-x: auto; padding: 0; }
+.pricing-table-wrap table { border-collapse: collapse; min-width: 820px; width: 100%; }
+.pricing-table-wrap th, .pricing-table-wrap td { border-bottom: 1px solid var(--line); font-size: 11px; padding: 17px 16px; text-align: left; white-space: nowrap; }
+.pricing-table-wrap thead th { background: #eeece6; color: var(--ink-soft); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.pricing-table-wrap tbody th { color: var(--teal); font-size: 12px; }
+.pricing-notes { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; margin-top: 18px; }
+.pricing-notes > div { background: var(--paper-deep); padding: 25px; }
+.pricing-notes h3 { font-size: 14px; margin: 0 0 8px; }
+.pricing-notes p { color: var(--ink-soft); font-size: 12px; line-height: 1.65; margin: 0; }
+.checkbox-row { display: grid; gap: 9px; grid-template-columns: 1fr 1fr; }
+.checkbox-row label { align-items: center; display: flex; gap: 8px; }
+.checkbox-row input { height: auto; width: auto; }
+.booking-form textarea { background: var(--white); border: 1px solid var(--line); border-radius: 3px; min-height: 78px; outline: none; padding: 11px 13px; resize: vertical; }
+.fare-estimate { background: #e4eee9; border-left: 3px solid var(--teal); display: grid; gap: 4px; padding: 12px 14px; }
+.fare-estimate strong { font-size: 14px; }
+.fare-estimate small { color: var(--ink-soft); font-size: 10px; line-height: 1.45; }
+@media (max-width: 720px) { .safety-band, .pricing-notes { grid-template-columns: 1fr; } .safety-band { gap: 28px; margin-bottom: 70px; padding: 30px 24px; } .checkbox-row { grid-template-columns: 1fr; } .pricing-page { padding-top: 45px; } }
+.settings-editor { background: var(--white); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 230px; padding: 12px; resize: vertical; width: 100%; }
