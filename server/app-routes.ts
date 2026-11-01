@@ -78,7 +78,9 @@ export function registerApplicationRoutes(app: Express) {
     if (account) {
       const { deleteAppSession } = await import("./app-auth");
       const rawCookie = req.headers.cookie?.split(";").find(value => value.trim().startsWith("aaa_app_session="));
-      await deleteAppSession(rawCookie?.split("=").slice(1).join("="));
+      const cookieToken = rawCookie?.split("=").slice(1).join("=");
+      const bearerToken = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : undefined;
+      await deleteAppSession(cookieToken ?? bearerToken);
     }
     clearAppSessionCookie(res);
     res.json({ success: true });
