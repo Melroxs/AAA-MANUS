@@ -45,6 +45,14 @@ export const passengers = mysqlTable("passengers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const caregiverAuthorizations = mysqlTable("caregiver_authorizations", {
+  id: int("id").autoincrement().primaryKey(),
+  caregiverAccountId: int("caregiverAccountId").notNull(),
+  passengerId: int("passengerId").notNull(),
+  status: mysqlEnum("status", ["active", "revoked"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const driverProfiles = mysqlTable("driver_profiles", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId").notNull().unique(),
@@ -66,12 +74,27 @@ export const driverProfiles = mysqlTable("driver_profiles", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const vehicles = mysqlTable("vehicles", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerAccountId: int("ownerAccountId").notNull(),
+  make: varchar("make", { length: 80 }).notNull(),
+  model: varchar("model", { length: 80 }).notNull(),
+  color: varchar("color", { length: 40 }).notNull(),
+  licensePlate: varchar("licensePlate", { length: 32 }).notNull().unique(),
+  licenseState: varchar("licenseState", { length: 8 }).notNull(),
+  mobilityReady: varchar("mobilityReady", { length: 8 }).default("false").notNull(),
+  status: mysqlEnum("status", ["active", "maintenance", "retired"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const bookings = mysqlTable("bookings", {
   id: int("id").autoincrement().primaryKey(),
   publicId: varchar("publicId", { length: 32 }).notNull().unique(),
   passengerId: int("passengerId").notNull(),
   requestedByAccountId: int("requestedByAccountId").notNull(),
   assignedDriverAccountId: int("assignedDriverAccountId"),
+  assignedVehicleId: int("assignedVehicleId"),
   pickup: varchar("pickup", { length: 255 }).notNull(),
   destination: varchar("destination", { length: 255 }).notNull(),
   scheduledDate: varchar("scheduledDate", { length: 32 }).notNull(),

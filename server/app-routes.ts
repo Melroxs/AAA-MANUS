@@ -4,7 +4,7 @@ import { documentRecords } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { authenticateAppRequest, clearAppSessionCookie, DEMO_ACCOUNTS, loginWithPassword, setAppSessionCookie, toPublicAccount } from "./app-auth";
-import { assignBooking, createBooking, getApprovedDrivers, getBookingEvents, getBookingLocation, listBookingsForAccount, recordDriverLocation, updateBookingStatus } from "./app-data";
+import { assignBooking, cancelBooking, createBooking, getApprovedDrivers, getBookingEvents, getBookingLocation, listBookingsForAccount, listVehicles, recordDriverLocation, updateBookingStatus } from "./app-data";
 import { createR2DownloadUrl, createR2UploadUrl, isR2Configured } from "./r2";
 import { seedDemoData } from "./seed-demo";
 import { completeDocumentUpload, getDriverOnboarding, isKycProviderConfigured, listVerificationQueue, reviewDriverVerification, submitDriverVerification } from "./kyc";
@@ -12,7 +12,7 @@ import { listNotifications, markNotificationRead } from "./notifications";
 
 function sendError(res: Response, error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
-  const status = code === "FORBIDDEN" || code === "PASSENGER_FORBIDDEN" ? 403 : code === "NOT_FOUND" ? 404 : code === "DATABASE_NOT_AVAILABLE" ? 503 : code === "R2_NOT_CONFIGURED" ? 503 : code === "INVALID_TRANSITION" || code === "DRIVER_CONFLICT" || code === "DRIVER_NOT_APPROVED" ? 409 : 400;
+  const status = code === "FORBIDDEN" || code === "PASSENGER_FORBIDDEN" ? 403 : code === "NOT_FOUND" ? 404 : code === "DATABASE_NOT_AVAILABLE" || code === "R2_NOT_CONFIGURED" ? 503 : code === "INVALID_TRANSITION" || code === "DRIVER_CONFLICT" || code === "DRIVER_NOT_APPROVED" || code === "VEHICLE_CONFLICT" || code === "VEHICLE_NOT_ELIGIBLE" ? 409 : 400;
   const safeMessage: Record<string, string> = {
     FORBIDDEN: "You do not have permission to perform this action.",
     PASSENGER_FORBIDDEN: "You do not have permission to manage this passenger.",
@@ -22,6 +22,8 @@ function sendError(res: Response, error: unknown) {
     INVALID_TRANSITION: "That trip status transition is not allowed.",
     DRIVER_CONFLICT: "The selected driver has a conflicting assignment.",
     DRIVER_NOT_APPROVED: "Only approved drivers can be assigned.",
+    VEHICLE_CONFLICT: "The selected vehicle has a conflicting assignment.",
+    VEHICLE_NOT_ELIGIBLE: "The selected vehicle is not active and associated with that driver.",
     TRIP_NOT_ELIGIBLE: "This trip is not eligible for location sharing.",
     INVALID_COORDINATES: "The supplied coordinates are invalid.",
   };
@@ -130,7 +132,8 @@ export function registerApplicationRoutes(app: Express) {
       return;
     }
     try {
-      res.json(await assignBooking(account, req.params.publicId, driverAccountId.data));
+      const vehicleId = req.body?.vehicleId === undefined ? undefined : z.number().int().positive().parse(req.body.vehicleId);
+      res.json(await assignBooking(account, req.params.publicId, driverAccountId.data, vehicleId, typeof req.body?.reason === "string" ? req.body.reason.slice(0, 500) : undefined));
     } catch (error) {
       sendError(res, error);
     }
@@ -146,6 +149,16 @@ export function registerApplicationRoutes(app: Express) {
     }
     try {
       res.json(await updateBookingStatus(account, req.params.publicId, nextStatus.data, req.body?.note));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.post("/api/bookings/:publicId/cancel", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try {
+      res.json(await cancelBooking(account, req.params.publicId, typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined));
     } catch (error) {
       sendError(res, error);
     }
@@ -252,6 +265,16 @@ export function registerApplicationRoutes(app: Express) {
     if (!account) return;
     try {
       res.json({ drivers: await getApprovedDrivers(account) });
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.get("/api/vehicles", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try {
+      res.json({ vehicles: await listVehicles(account) });
     } catch (error) {
       sendError(res, error);
     }

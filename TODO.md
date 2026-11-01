@@ -15,6 +15,8 @@
 - [x] Rider and caregiver consoles show the next ride, pickup and destination, status progression, upcoming/history context, assigned driver information, and location availability/stale indicators.
 - [x] The rider trip view includes a prominent Call Driver action using the assigned driver’s authorized `tel:` contact and a fallback when a number is not available.
 - [x] A rider/caregiver can open a booking form, enter passenger, pickup, destination, date, time and ride type, and persist the new booking through the authenticated backend in Requested state.
+- [x] Authenticated `/overview`, `/bookings`, `/drivers`, `/operations`, and `/account` pages now render through real role-aware navigation; booking management includes filters and authorized cancellation that releases assignments.
+- [x] Caregiver and clinic-intake access uses explicit caregiver-to-passenger authorization records rather than a passenger-name shortcut; the verified smoke test showed James Lopez sees only authorized Maria Lopez bookings.
 
 ## Driver operations
 
@@ -22,6 +24,7 @@
 - [x] The driver can explicitly start GPS sharing; the browser Geolocation API is requested when available and the UI identifies whether the location is live or demo-simulated.
 - [ ] Private R2 presigned upload/download endpoints and document metadata persistence are implemented, but the deployed environment still needs `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME` before uploads can succeed.
 - [x] Driver verification submission reads and persists a non-verified provider state, and administrator review routes enforce the provider-credential boundary; no unverified driver is labeled verified.
+- [x] Driver-owned vehicle records are persistent and visible only to the driver or authorized operations roles; assignment responses include the selected vehicle.
 
 ## Dispatcher and administrator operations
 
@@ -29,6 +32,8 @@
 - [x] Dispatcher assignment controls enforce approved-driver and time-conflict checks server-side, persist assignment changes, and append booking events; the smoke test assigned AR-1056 to Priya Raman and the driver then advanced it to Driver en route.
 - [x] Administrator console shows user/role counts, driver review queue, document/vehicle review context, booking/trip oversight, demo-account readiness and audit-log context.
 - [x] Dispatcher event history reads are persisted and interactive; alert review filters exception records, and administrator controls surface their protected-API/provider prerequisites rather than silently doing nothing.
+- [x] Dispatcher assignment selects an approved driver and active associated vehicle; server-side driver and vehicle overlap checks reject a simultaneous same-slot assignment with HTTP 409.
+- [x] Cancellation is persisted as an auditable event, notifies participants, clears driver/vehicle assignment, and is permitted only to the booking owner or authorized operations roles.
 
 ## Platform and quality
 

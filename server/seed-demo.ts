@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { appAccounts, bookingEvents, bookings, driverProfiles, passengers } from "../drizzle/schema";
+import { appAccounts, bookingEvents, bookings, caregiverAuthorizations, driverProfiles, passengers, vehicles } from "../drizzle/schema";
 import { getDb } from "./db";
 import { DEMO_ACCOUNTS, seedDemoAccounts } from "./app-auth";
 
@@ -23,6 +23,11 @@ export async function seedDemoData() {
   }
   if (!passenger) throw new Error("DEMO_SEED_PASSENGER_MISSING");
 
+  for (const caregiverId of [james.id, alina.id]) {
+    const existingAuthorization = (await db.select().from(caregiverAuthorizations).where(and(eq(caregiverAuthorizations.caregiverAccountId, caregiverId), eq(caregiverAuthorizations.passengerId, passenger.id))).limit(1))[0];
+    if (!existingAuthorization) await db.insert(caregiverAuthorizations).values({ caregiverAccountId: caregiverId, passengerId: passenger.id, status: "active" });
+  }
+
   const driverProfilesToSeed = [
     { accountId: andre.id, phone: andre.phone, vehicleMake: "Toyota", vehicleModel: "Sienna", vehicleColor: "Blue", licensePlate: "HMR-2048", licenseState: "VA" },
     { accountId: priya.id, phone: priya.phone, vehicleMake: "Ford", vehicleModel: "Transit Connect", vehicleColor: "Silver", licensePlate: "HMR-3116", licenseState: "VA" },
@@ -30,6 +35,16 @@ export async function seedDemoData() {
   for (const profile of driverProfilesToSeed) {
     const existing = (await db.select().from(driverProfiles).where(eq(driverProfiles.accountId, profile.accountId)).limit(1))[0];
     if (!existing) await db.insert(driverProfiles).values({ ...profile, onboardingStatus: "approved" });
+    else if (existing.onboardingStatus !== "suspended" && existing.onboardingStatus !== "rejected") await db.update(driverProfiles).set({ ...profile, onboardingStatus: "approved", updatedAt: new Date() }).where(eq(driverProfiles.id, existing.id));
+  }
+
+  const demoVehicles = [
+    { ownerAccountId: andre.id, make: "Toyota", model: "Sienna", color: "Blue", licensePlate: "HMR-2048", licenseState: "VA", mobilityReady: "true" },
+    { ownerAccountId: priya.id, make: "Ford", model: "Transit Connect", color: "Silver", licensePlate: "HMR-3116", licenseState: "VA", mobilityReady: "true" },
+  ];
+  for (const vehicle of demoVehicles) {
+    const existing = (await db.select().from(vehicles).where(eq(vehicles.licensePlate, vehicle.licensePlate)).limit(1))[0];
+    if (!existing) await db.insert(vehicles).values({ ...vehicle, status: "active" });
   }
 
   const demoBookings = [
