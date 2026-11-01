@@ -37,6 +37,8 @@
 
 ## Platform and quality
 
+- [x] The supplied AAA routebook branding is used globally in the public header, authenticated rail, auth screens, footer, project logo metadata, favicon, Apple touch icon, and installable PWA icons.
+- [x] The web app is responsive for mobile browsers and includes an application-owned manifest, standalone display metadata, safe offline shell service worker, and installable icon sizes at `/brand/icon-192.png` and `/brand/icon-512.png`.
 - [x] `client/public/manus-routes.json` declares `/`, `/sign-in`, `/sign-up`, `/forgot-password`, `/rider`, `/driver`, `/dispatch`, `/dashboard`, and `/404`.
 - [x] The project retains the managed Express health endpoint, Manus OAuth entry point and server runtime.
 - [x] Persistent application tables, idempotent six-account seeding, password hashing, session lookup, server-side role checks, booking persistence, explicit status transitions and append-only booking event writes are implemented and exercised against the configured database.

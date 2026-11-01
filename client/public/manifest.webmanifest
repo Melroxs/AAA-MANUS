@@ -1,0 +1,15 @@
+{
+  "name": "AAA Home Rides",
+  "short_name": "AAA Rides",
+  "description": "Care-first non-emergency transportation coordination for riders, caregivers, drivers, and dispatchers.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f4ee",
+  "theme_color": "#12364b",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

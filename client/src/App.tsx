@@ -411,7 +411,7 @@ function PageHeading({ eyebrow, title, subtitle, action }: { eyebrow: string; ti
 }
 
 function Feature({ number, title, copy, icon }: { number: string; title: string; copy: string; icon: React.ReactNode }) { return <article className="feature-item"><span className="feature-number">{number}</span><div className="feature-icon">{icon}</div><h3>{title}</h3><p>{copy}</p><ArrowRight size={17} /></article>; }
-function Mark({ light = false }: { light?: boolean }) { return <span className={`mark ${light ? "mark-light" : ""}`} aria-hidden="true"><span /><span /><span /></span>; }
+function Mark({ light = false }: { light?: boolean }) { return <img className={`brand-mark ${light ? "brand-mark-light" : ""}`} src="/brand/aaahomeride-mark.png" alt="AAA Home Rides" />; }
 function Avatar({ initials, tone, large = false }: { initials: string; tone: string; large?: boolean }) { return <span className={`avatar avatar-${tone} ${large ? "avatar-large" : ""}`}>{initials}</span>; }
 function StatusPill({ status }: { status: string }) { const key = status.toLowerCase().replaceAll(" ", "-"); return <span className={`status-pill status-${key}`}><span />{status}</span>; }
 function Metric({ label, value, detail, icon }: { label: string; value: string; detail: string; icon: React.ReactNode }) { return <div className="metric-card card"><div className="metric-icon">{icon}</div><div><span className="eyebrow">{label}</span><strong>{value}</strong><small>{detail}</small></div></div>; }
