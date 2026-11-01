@@ -28,7 +28,8 @@ export async function seedDemoData() {
     { accountId: priya.id, phone: priya.phone, vehicleMake: "Ford", vehicleModel: "Transit Connect", vehicleColor: "Silver", licensePlate: "HMR-3116", licenseState: "VA" },
   ];
   for (const profile of driverProfilesToSeed) {
-    await db.insert(driverProfiles).values({ ...profile, onboardingStatus: "approved" }).onDuplicateKeyUpdate({ set: { ...profile, onboardingStatus: "approved", updatedAt: new Date() } });
+    const existing = (await db.select().from(driverProfiles).where(eq(driverProfiles.accountId, profile.accountId)).limit(1))[0];
+    if (!existing) await db.insert(driverProfiles).values({ ...profile, onboardingStatus: "approved" });
   }
 
   const demoBookings = [

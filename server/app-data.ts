@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { appAccounts, bookingEvents, bookings, driverLocations, driverProfiles, passengers, type AppAccount } from "../drizzle/schema";
 import { getDb } from "./db";
+import { notifyBookingAssignment, notifyBookingParticipants } from "./notifications";
 
 const BOOKING_STATUS_LABELS: Record<string, string> = {
   requested: "Requested",
@@ -69,6 +70,16 @@ async function driverSummary(driverId: number | null) {
   };
 }
 
+async function latestLocationForBooking(bookingId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(driverLocations).where(eq(driverLocations.bookingId, bookingId)).orderBy(desc(driverLocations.recordedAt)).limit(1);
+  const location = rows[0];
+  if (!location) return null;
+  const recordedAt = new Date(location.recordedAt);
+  return { latitude: Number(location.latitude), longitude: Number(location.longitude), source: location.source, recordedAt, stale: Date.now() - recordedAt.getTime() > 5 * 60 * 1000 };
+}
+
 export async function listBookingsForAccount(account: AppAccount) {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_NOT_AVAILABLE");
@@ -95,6 +106,7 @@ export async function listBookingsForAccount(account: AppAccount) {
     status: toUiStatus(booking.status),
     driver: booking.assignedDriverAccountId ? (await driverSummary(booking.assignedDriverAccountId))?.name : undefined,
     driverDetails: await driverSummary(booking.assignedDriverAccountId),
+    latestLocation: await latestLocationForBooking(booking.id),
     createdAt: booking.createdAt,
   })));
 }
@@ -122,6 +134,7 @@ export async function createBooking(account: AppAccount, input: { passenger: str
   const booking = created[0];
   if (!booking) throw new Error("BOOKING_CREATE_FAILED");
   await db.insert(bookingEvents).values({ bookingId: booking.id, actorAccountId: account.id, previousStatus: null, newStatus: "requested", note: "Booking requested" });
+  await notifyBookingParticipants(booking.id, "booking_created", "Booking requested", `Your request ${publicId} has been recorded.`, [account.id]);
   return { publicId };
 }
 
@@ -150,6 +163,7 @@ export async function assignBooking(account: AppAccount, publicId: string, drive
   const previousStatus = row.booking.status;
   await db.update(bookings).set({ assignedDriverAccountId: driverAccountId, status: "assigned", updatedAt: new Date() }).where(eq(bookings.id, row.booking.id));
   await db.insert(bookingEvents).values({ bookingId: row.booking.id, actorAccountId: account.id, previousStatus, newStatus: "assigned", note: `Assigned to ${driver.account.name}` });
+  await notifyBookingAssignment(row.booking.id, driverAccountId, account.id);
   return { success: true };
 }
 
@@ -162,6 +176,7 @@ export async function updateBookingStatus(account: AppAccount, publicId: string,
   if (!ALLOWED_TRANSITIONS[row.booking.status]?.includes(nextStatus)) throw new Error("INVALID_TRANSITION");
   await db.update(bookings).set({ status: nextStatus as typeof row.booking.status, updatedAt: new Date() }).where(eq(bookings.id, row.booking.id));
   await db.insert(bookingEvents).values({ bookingId: row.booking.id, actorAccountId: account.id, previousStatus: row.booking.status, newStatus: nextStatus, note: note ?? null });
+  await notifyBookingParticipants(row.booking.id, `trip_${nextStatus}`, `Trip status: ${toUiStatus(nextStatus)}`, `Booking ${publicId} is now ${toUiStatus(nextStatus)}.`, [row.booking.requestedByAccountId, row.booking.assignedDriverAccountId ?? 0, account.id]);
   return { success: true };
 }
 
@@ -190,4 +205,9 @@ export async function getBookingEvents(account: AppAccount, publicId: string) {
   const row = await getBookingForAccount(account, publicId);
   const rows = await db.select({ event: bookingEvents, actor: appAccounts }).from(bookingEvents).innerJoin(appAccounts, eq(appAccounts.id, bookingEvents.actorAccountId)).where(eq(bookingEvents.bookingId, row.booking.id)).orderBy(desc(bookingEvents.createdAt));
   return rows.map(item => ({ ...item.event, actor: item.actor.name, status: toUiStatus(item.event.newStatus) }));
+}
+
+export async function getBookingLocation(account: AppAccount, publicId: string) {
+  const row = await getBookingForAccount(account, publicId);
+  return { bookingId: row.booking.id, status: toUiStatus(row.booking.status), location: await latestLocationForBooking(row.booking.id) };
 }

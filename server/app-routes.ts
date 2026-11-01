@@ -4,9 +4,11 @@ import { documentRecords } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { authenticateAppRequest, clearAppSessionCookie, DEMO_ACCOUNTS, loginWithPassword, setAppSessionCookie, toPublicAccount } from "./app-auth";
-import { assignBooking, createBooking, getApprovedDrivers, getBookingEvents, listBookingsForAccount, recordDriverLocation, updateBookingStatus } from "./app-data";
+import { assignBooking, createBooking, getApprovedDrivers, getBookingEvents, getBookingLocation, listBookingsForAccount, recordDriverLocation, updateBookingStatus } from "./app-data";
 import { createR2DownloadUrl, createR2UploadUrl, isR2Configured } from "./r2";
 import { seedDemoData } from "./seed-demo";
+import { completeDocumentUpload, getDriverOnboarding, isKycProviderConfigured, listVerificationQueue, reviewDriverVerification, submitDriverVerification } from "./kyc";
+import { listNotifications, markNotificationRead } from "./notifications";
 
 function sendError(res: Response, error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN_ERROR";
@@ -159,6 +161,92 @@ export function registerApplicationRoutes(app: Express) {
     }
   });
 
+  app.get("/api/bookings/:publicId/location", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try {
+      res.json(await getBookingLocation(account, req.params.publicId));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.get("/api/notifications", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try {
+      res.json({ notifications: await listNotifications(account) });
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    const id = z.coerce.number().int().positive().safeParse(req.params.id);
+    if (!id.success) {
+      res.status(400).json({ error: "A valid notification id is required." });
+      return;
+    }
+    try {
+      res.json(await markNotificationRead(account, id.data));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.get("/api/driver/onboarding", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try {
+      res.json(await getDriverOnboarding(account));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.post("/api/driver/verification/submit", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    const input = z.object({ provider: z.string().max(80).optional(), reference: z.string().max(160).optional() }).safeParse(req.body ?? {});
+    if (!input.success) {
+      res.status(400).json({ error: "Verification submission details are invalid." });
+      return;
+    }
+    try {
+      res.json(await submitDriverVerification(account, input.data));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.get("/api/admin/verification-queue", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    try {
+      res.json({ providerConfigured: isKycProviderConfigured(), queue: await listVerificationQueue(account) });
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.post("/api/admin/verifications/:driverAccountId/review", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    const driverAccountId = z.coerce.number().int().positive().safeParse(req.params.driverAccountId);
+    const input = z.object({ decision: z.enum(["approve", "reject"]), note: z.string().max(500).optional() }).safeParse(req.body);
+    if (!driverAccountId.success || !input.success) {
+      res.status(400).json({ error: "A valid driver and review decision are required." });
+      return;
+    }
+    try {
+      res.json(await reviewDriverVerification(account, driverAccountId.data, input.data.decision, input.data.note));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
   app.get("/api/drivers", async (req, res) => {
     const account = await requireAccount(req, res);
     if (!account) return;
@@ -205,7 +293,8 @@ export function registerApplicationRoutes(app: Express) {
       const db = await getDb();
       if (!db) throw new Error("DATABASE_NOT_AVAILABLE");
       await db.insert(documentRecords).values({ ownerAccountId: account.id, category: input.data.category, objectKey: presigned.key, contentType: input.data.contentType, status: "upload_pending" });
-      res.json(presigned);
+      const created = await db.select({ id: documentRecords.id }).from(documentRecords).where(eq(documentRecords.objectKey, presigned.key)).limit(1);
+      res.json({ ...presigned, documentId: created[0]?.id ?? null });
     } catch (error) {
       sendError(res, error);
     }
@@ -233,6 +322,21 @@ export function registerApplicationRoutes(app: Express) {
         return;
       }
       res.json(await createR2DownloadUrl(record.objectKey));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  app.post("/api/documents/:id/complete", async (req, res) => {
+    const account = await requireAccount(req, res);
+    if (!account) return;
+    const documentId = z.coerce.number().int().positive().safeParse(req.params.id);
+    if (!documentId.success) {
+      res.status(400).json({ error: "A valid document id is required." });
+      return;
+    }
+    try {
+      res.json(await completeDocumentUpload(account, documentId.data));
     } catch (error) {
       sendError(res, error);
     }

@@ -49,6 +49,12 @@ export const driverProfiles = mysqlTable("driver_profiles", {
   id: int("id").autoincrement().primaryKey(),
   accountId: int("accountId").notNull().unique(),
   onboardingStatus: mysqlEnum("onboardingStatus", ["draft", "submitted", "under_review", "approved", "rejected", "suspended"]).notNull(),
+  verificationStatus: mysqlEnum("verificationStatus", ["not_started", "pending", "under_review", "verified", "rejected", "provider_unconfigured"]).default("not_started").notNull(),
+  verificationProvider: varchar("verificationProvider", { length: 80 }),
+  verificationReference: varchar("verificationReference", { length: 160 }),
+  verificationSubmittedAt: timestamp("verificationSubmittedAt"),
+  verificationReviewedAt: timestamp("verificationReviewedAt"),
+  verificationReviewNote: varchar("verificationReviewNote", { length: 500 }),
   phone: varchar("phone", { length: 32 }),
   vehicleMake: varchar("vehicleMake", { length: 80 }),
   vehicleModel: varchar("vehicleModel", { length: 80 }),
@@ -104,6 +110,19 @@ export const driverLocations = mysqlTable("driver_locations", {
   longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
   source: varchar("source", { length: 24 }).notNull(),
   recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+});
+
+export const appNotifications = mysqlTable("app_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  recipientAccountId: int("recipientAccountId").notNull(),
+  bookingId: int("bookingId"),
+  type: varchar("type", { length: 80 }).notNull(),
+  channel: varchar("channel", { length: 40 }).default("in_app").notNull(),
+  status: varchar("status", { length: 40 }).default("delivered").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  body: varchar("body", { length: 500 }).notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

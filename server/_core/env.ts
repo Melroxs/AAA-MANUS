@@ -13,4 +13,6 @@ export const ENV = {
   get r2AccessKeyId() { return process.env.R2_ACCESS_KEY_ID ?? ""; },
   get r2SecretAccessKey() { return process.env.R2_SECRET_ACCESS_KEY ?? ""; },
   get r2Bucket() { return process.env.R2_BUCKET_NAME ?? "aaa-mvp"; },
+  get kycProviderUrl() { return process.env.KYC_PROVIDER_URL ?? ""; },
+  get kycProviderKey() { return process.env.KYC_PROVIDER_API_KEY ?? ""; },
 };

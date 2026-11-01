@@ -21,12 +21,14 @@
 - [x] Driver console shows onboarding status, vehicle and license plate details, assigned trips, trip acknowledgment/status actions, document readiness, and a clearly labeled simulated GPS fallback.
 - [x] The driver can explicitly start GPS sharing; the browser Geolocation API is requested when available and the UI identifies whether the location is live or demo-simulated.
 - [ ] Private R2 presigned upload/download endpoints and document metadata persistence are implemented, but the deployed environment still needs `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME` before uploads can succeed.
+- [x] Driver verification submission reads and persists a non-verified provider state, and administrator review routes enforce the provider-credential boundary; no unverified driver is labeled verified.
 
 ## Dispatcher and administrator operations
 
 - [x] Dispatcher console shows authorized bookings, status filters, passenger/pickup/destination details, approved driver availability, assignment/reassignment controls, active-trip monitoring, exceptions and booking event history.
 - [x] Dispatcher assignment controls enforce approved-driver and time-conflict checks server-side, persist assignment changes, and append booking events; the smoke test assigned AR-1056 to Priya Raman and the driver then advanced it to Driver en route.
 - [x] Administrator console shows user/role counts, driver review queue, document/vehicle review context, booking/trip oversight, demo-account readiness and audit-log context.
+- [x] Dispatcher event history reads are persisted and interactive; alert review filters exception records, and administrator controls surface their protected-API/provider prerequisites rather than silently doing nothing.
 
 ## Platform and quality
 
@@ -35,3 +37,5 @@
 - [x] Persistent application tables, idempotent six-account seeding, password hashing, session lookup, server-side role checks, booking persistence, explicit status transitions and append-only booking event writes are implemented and exercised against the configured database.
 - [ ] Add production rate limiting and migrate to Better Auth/Neon only if those external services are provisioned and required.
 - [ ] Configure private Cloudflare R2 bucket `aaa-mvp`, notification providers, map provider and any external identity-verification service before activating those integrations.
+- [x] Persisted in-app notifications are created for booking creation, assignment and trip-status changes, can be listed per recipient, and can be marked read; external email/SMS/WhatsApp delivery remains unconfigured.
+- [x] Driver location writes are limited to assigned non-terminal trips; riders, caregivers and dispatchers can read authorized latest locations with stale flags, and terminal status blocks further tracking writes.
