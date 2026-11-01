@@ -37,8 +37,11 @@ export async function seedDemoData() {
     { publicId: "AR-1056", requestedByAccountId: alina.id, assignedDriverAccountId: null, pickup: "Harbor Clinic", destination: "Springfield Therapy Partners", scheduledDate: "2026-11-08", scheduledTime: "2:15 PM", rideType: "Therapy", status: "requested" as const },
   ];
   for (const demo of demoBookings) {
-    await db.insert(bookings).values({ ...demo, passengerId: passenger.id }).onDuplicateKeyUpdate({ set: { passengerId: passenger.id, requestedByAccountId: demo.requestedByAccountId, assignedDriverAccountId: demo.assignedDriverAccountId, pickup: demo.pickup, destination: demo.destination, scheduledDate: demo.scheduledDate, scheduledTime: demo.scheduledTime, rideType: demo.rideType, status: demo.status, updatedAt: new Date() } });
-    const booking = (await db.select().from(bookings).where(eq(bookings.publicId, demo.publicId)).limit(1))[0];
+    let booking = (await db.select().from(bookings).where(eq(bookings.publicId, demo.publicId)).limit(1))[0];
+    if (!booking) {
+      await db.insert(bookings).values({ ...demo, passengerId: passenger.id });
+      booking = (await db.select().from(bookings).where(eq(bookings.publicId, demo.publicId)).limit(1))[0];
+    }
     if (!booking) continue;
     const events = await db.select().from(bookingEvents).where(and(eq(bookingEvents.bookingId, booking.id), eq(bookingEvents.newStatus, demo.status))).limit(1);
     if (!events[0]) await db.insert(bookingEvents).values({ bookingId: booking.id, actorAccountId: demo.requestedByAccountId, previousStatus: null, newStatus: demo.status, note: "Seeded fictional demonstration booking" });
